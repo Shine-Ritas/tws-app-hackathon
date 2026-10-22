@@ -53,6 +53,7 @@ resource "aws_security_group" "allow_user_to_connect" {
 resource "aws_instance" "testinstance" {
   ami                    = data.aws_ami.os_image.id
   instance_type          = var.instance_type
+  iam_instance_profile   = aws_iam_instance_profile.eks_hosts["jenkins"].name
   key_name               = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.allow_user_to_connect.id]
   subnet_id              = module.vpc.public_subnets[0]

@@ -27,22 +27,39 @@ module "eks" {
   cluster_endpoint_public_access  = false
   cluster_endpoint_private_access = true
 
-  //access entry for any specific user or role (jenkins controller instance)
-  access_entries = {
-    # One access entry with a policy associated
-    example = {
-      principal_arn = "arn:aws:iam::876997124628:user/terraform"
+  # The module resolves assumed-role sessions to their permanent IAM role ARN.
+  # Each deployment grants its own Terraform identity access, without an account ID.
+  authentication_mode                      = "API_AND_CONFIG_MAP"
+  enable_cluster_creator_admin_permissions = true
 
-      policy_associations = {
-        example = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-          access_scope = {
-            type = "cluster"
+  access_entries = merge(
+    {
+      for name, role in aws_iam_role.eks_hosts : name => {
+        principal_arn = role.arn
+        policy_associations = {
+          access = {
+            policy_arn = "arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/${local.eks_host_access_policies[name]}"
+            access_scope = {
+              type = "cluster"
+            }
+          }
+        }
+      }
+    },
+    {
+      for name, arn in var.eks_additional_admin_principals : "additional_${name}" => {
+        principal_arn = arn
+        policy_associations = {
+          admin = {
+            policy_arn = "arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+            access_scope = {
+              type = "cluster"
+            }
           }
         }
       }
     }
-  }
+  )
 
 
   cluster_security_group_additional_rules = {

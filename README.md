@@ -101,8 +101,8 @@ sudo ./aws/install
 1. **Clone the Repository:**
 First, clone this repo to your local machine:<br/>
 ```bash
-git clone https://github.com/LondheShubham153/tws-e-commerce-app.git
-cd terraform
+git clone https://github.com/Shine-Ritas/tws-app-hackathon.git
+cd tws-app-hackathon/terraform
 ```
 2. **Generate SSH Key Pair:**
 Create a new SSH key to access your EC2 instance:
@@ -117,6 +117,11 @@ chmod 400 terra-key
 ```
 
 4. **Initialize Terraform:**
+For a new deployment in your own AWS account, change the S3 backend bucket in
+`terraform/terraform.tf` to a state bucket you own before initialization. Existing
+deployments should keep their current backend. Authenticate your local AWS CLI
+as the IAM user or role that will manage the infrastructure.
+
 Initialize the Terraform working directory to download required providers:
 ```bash
 terraform init
@@ -139,13 +144,12 @@ After deployment, grab the public IP of your EC2 instance from the output or AWS
 ssh -i terra-key ubuntu@<public-ip>
 ```
 8. **Update your kubeconfig:**
-wherever you want to access your eks wheather it is yur local machine or bastion server this command will help you to interact with your eks.
-> [!CAUTION]
-> you need to configure aws cli first to execute this command:
-
-```bash
-aws configure
-```
+Terraform grants its deployer cluster admin access and attaches EKS access roles
+to the bastion and Jenkins instances. On those EC2 instances, the AWS CLI uses
+temporary role credentials automatically; you do not need to run `aws configure`.
+The EKS endpoint is private, so run Kubernetes commands from the bastion or a
+machine connected to the VPC. Local AWS credentials alone do not provide network
+access to the private endpoint.
 
 ```bash
 aws eks --region ap-southeast-1 update-kubeconfig --name tws-eks-cluster
@@ -154,6 +158,10 @@ aws eks --region ap-southeast-1 update-kubeconfig --name tws-eks-cluster
 ```bash
 kubectl get nodes
 ```
+
+See [portable EKS access and existing-instance migration](terraform/README.md#portable-eks-access)
+for additional administrators, Jenkins permissions, and removing old credential
+overrides from EC2 sessions.
 
 ## Jenkins Setup Steps
 > [!TIP]
@@ -273,12 +281,15 @@ Before configuring CD, make sure the following tools are installed:<br/>
 **Note:**<br/>
 This is not the node where Jenkins is running. This is the intermediate EC2 (Bastion Host) used for accessing private resources like your EKS cluster.
 
-**8. Configure AWS CLI on Bastion Server**
-Run the AWS configure command:<br/>
+**8. Check the Bastion Server's AWS Identity**
+Terraform attaches an IAM role with EKS access to the bastion. Check that the
+AWS CLI is using that role:
 ```bash
-aws configure
+aws sts get-caller-identity
 ```
-Add your Access Key and Secret Key when prompted.
+The ARN should contain `assumed-role/tws-eks-cluster-bastion-`. No access keys
+need to be copied to the server. If you previously configured keys on this
+instance, follow the migration steps in [terraform/README.md](terraform/README.md#existing-deployments).
 
 **9. Update Kubeconfig for EKS**<br/>
 Run the following important command:

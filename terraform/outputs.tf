@@ -29,3 +29,13 @@ output "eks_node_group_public_ips" {
   description = "Public IPs of the EKS node group instances"
   value       = data.aws_instances.eks_nodes.public_ips
 }
+
+output "eks_host_role_arns" {
+  description = "IAM roles used automatically by the bastion and Jenkins EC2 instances"
+  value       = { for name, role in aws_iam_role.eks_hosts : name => role.arn }
+}
+
+output "eks_kubeconfig_command" {
+  description = "Run this on the bastion or another host with network access to the private EKS endpoint"
+  value       = "aws eks update-kubeconfig --region ${local.region} --name ${module.eks.cluster_name}"
+}
