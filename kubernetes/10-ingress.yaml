@@ -14,7 +14,7 @@ metadata:
     kubernetes.io/ingress.class: alb
 spec:
   rules:
-  - host: easyshop.demos-project.com
+  - host: easyshop.demos-project.site
     http:
       paths:
       - path: /
